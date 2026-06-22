@@ -1,0 +1,10 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body.dragging .drop-zone {
+  height: auto !important;
+  opacity: 1 !important;
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+}

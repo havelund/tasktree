@@ -1,0 +1,43 @@
+# Database files - DO NOT COMMIT YOUR PERSONAL DATA
+*.db
+todos.db
+backups/
+
+# Uploaded files - user attachments
+uploads/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+dist/
+dist-ssr/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Environment variables (if you add any)
+.env
+.env.local
+
+# Logs
+*.log
+logs/
