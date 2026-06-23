@@ -76,6 +76,7 @@ function TodoItem({ todo, level = 0, onUpdate, onDelete, onAddChild, onMove, onR
   const [newComment, setNewComment] = useState('')
   const [editingCommentId, setEditingCommentId] = useState(null)
   const [editCommentText, setEditCommentText] = useState('')
+  const [showColorPicker, setShowColorPicker] = useState(false)
 
   // Clear editing state when comment section opens
   useEffect(() => {
@@ -113,6 +114,12 @@ function TodoItem({ todo, level = 0, onUpdate, onDelete, onAddChild, onMove, onR
 
   const toggleForWeek = () => {
     onUpdate(todo.id, { is_for_week: !todo.is_for_week })
+  }
+
+  const updateColor = async (newColor) => {
+    await onUpdate(todo.id, { color: newColor })
+    await onRefresh()
+    setShowColorPicker(false)
   }
   
   const toggleForToday = () => {
@@ -424,8 +431,12 @@ function TodoItem({ todo, level = 0, onUpdate, onDelete, onAddChild, onMove, onR
             >
               <div className="flex items-center gap-2 flex-nowrap">
                 <div 
-                  className={`w-3 h-3 rounded-full flex-shrink-0 ${COLORS.find(c => c.name === (todo.color || 'gray'))?.solid || 'bg-gray-400'}`}
-                  title={`Color: ${COLORS.find(c => c.name === (todo.color || 'gray'))?.label || 'Gray'}`}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setShowColorPicker(!showColorPicker)
+                  }}
+                  className={`w-3 h-3 rounded-full flex-shrink-0 cursor-pointer hover:scale-125 transition-transform ${COLORS.find(c => c.name === (todo.color || 'gray'))?.solid || 'bg-gray-400'}`}
+                  title="Click to change color"
                 ></div>
                 <h3 className={`text-base font-medium truncate min-w-0 ${todo.completed ? 'line-through text-gray-500' : (darkMode ? 'text-gray-100' : 'text-gray-800')}`}>
                   {todo.title}
@@ -469,6 +480,25 @@ function TodoItem({ todo, level = 0, onUpdate, onDelete, onAddChild, onMove, onR
                   </div>
                 )}
               </div>
+              
+              {showColorPicker && (
+                <div className="mt-2 flex gap-2 items-center">
+                  <span className="text-xs text-gray-500">Choose color:</span>
+                  {COLORS.map((color) => (
+                    <button
+                      key={color.name}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        updateColor(color.name)
+                      }}
+                      className={`w-6 h-6 rounded-full ${color.solid} hover:scale-110 transition-transform ${
+                        todo.color === color.name ? 'ring-2 ring-offset-2 ring-gray-400' : ''
+                      }`}
+                      title={color.label}
+                    />
+                  ))}
+                </div>
+              )}
               
               {expanded && (
                 <div className="mt-2 space-y-2">
