@@ -185,6 +185,3 @@ This is a personal project.
 
 MIT License - Feel free to use and modify for your own needs.
 
----
-
-**TaskTree** - Organize your tasks, grow your productivity 🌳
