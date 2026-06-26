@@ -1,6 +1,9 @@
 # TaskTree 🌳
 
-A powerful hierarchical todo list application with unlimited nesting, smart filtering, and comprehensive task management features.
+This todo list application offers two features together that I was not able to find in other todo list applications:
+
+1. **Hierarchical Tasks** - Unlimited nesting with parent-child relationships
+2. **Smart Filtering** - Ability to mark tasks for today, this week, important, and more, and filter them, allowing to update the filtered tasks, causing the origin tasks to be updated.
 
 ## Features
 
@@ -169,9 +172,11 @@ todo/
 - Drag tasks to reorder
 - Click icons for quick actions
 
-## Contributing
+## Author
 
-This is a personal project, but suggestions and improvements are welcome!
+**Klaus Havelund** (klaus.havelund@jpl.nasa.gov)
+
+This is a personal project.
 
 ## License
 
