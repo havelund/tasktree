@@ -1,9 +1,19 @@
-# TaskTree 🌳
+# TaskTree
 
 This todo list application offers two features together that I was not able to find in other todo list applications:
 
 1. **Hierarchical Tasks** - Unlimited nesting with parent-child relationships
 2. **Smart Filtering** - Ability to mark tasks for today, this week, important, and more, and filter them, allowing to update the filtered tasks, causing the origin tasks to be updated.
+
+![TaskTree Screenshot](tasktree.png)
+
+**Key Elements:**
+- **Add Task** - Click the "+" button at the top to create new tasks
+- **Filter Buttons** - All, This Week, Today, Upcoming, Important, Completed, Worked On (each shows task count)
+- **Color Filters** - Seven color circles to filter tasks by category
+- **Task Actions** - Each task has buttons for: comments, add subtask, attachments, edit, This Week flag, due date, focus tracking, important flag, and delete
+- **Hierarchical Structure** - Tasks can have unlimited subtasks (expand/collapse with arrow)
+- **Quick Color Change** - Click the colored dot next to any task title to change its color
 
 ## Features
 
@@ -59,36 +69,29 @@ This todo list application offers two features together that I was not able to f
 
 ### Installation
 
-1. **Clone or download** the repository
-
-2. **Install dependencies:**
+1. **Clone the repository:**
 ```bash
-# Backend
-pip install -r requirements.txt
+git clone https://github.jpl.nasa.gov/khavelun/tasktree.git
+```
 
-# Frontend
+2. **Navigate to the project directory:**
+```bash
+cd tasktree
+```
+
+3. **Install dependencies (only once):**
+```bash
+pip install -r requirements.txt
 npm install
 ```
 
 ### Running the Application
 
-**Option 1: Use the start script (recommended)**
 ```bash
 ./start.sh
 ```
 
-**Option 2: Manual start**
-```bash
-# Terminal 1 - Backend
-python app.py
-
-# Terminal 2 - Frontend
-npm run dev
-```
-
-The application will be available at:
-- **Frontend:** http://localhost:5173
-- **Backend API:** http://localhost:5000
+The application will be available at: http://localhost:5173
 
 ### Stopping the Application
 
