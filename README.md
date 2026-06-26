@@ -16,6 +16,7 @@ A powerful hierarchical todo list application with unlimited nesting, smart filt
 - **Important Flag** (🔴) - Highlight critical tasks
 - **Focus Tracking** (🎯) - Track which tasks you're actively working on
 - **7 Color System** (🎨) - Categorize tasks with Gray, Red, Orange, Yellow, Green, Blue, Purple
+- **Quick Color Change** - Click the colored dot next to any task title to instantly change its color
 - **Due Dates** - Set deadlines and track overdue tasks
 
 ### 🔍 Smart Filtering
@@ -25,6 +26,7 @@ A powerful hierarchical todo list application with unlimited nesting, smart filt
 - **Upcoming** - All tasks with deadlines (overdue, today, and next 7 days)
 - **Important** - Critical tasks only
 - **Color Filters** - Filter by any of 7 colors
+- **Task Count Badges** - Each filter button shows the number of matching tasks at a glance
 - **Completed Period** - View tasks completed in date range
 - **Parent Breadcrumbs** - See task location in filtered views (📁 Parent › Grandparent)
 - **Expandable in Filters** - View subtasks even in filtered views

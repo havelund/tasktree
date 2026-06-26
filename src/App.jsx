@@ -1987,9 +1987,10 @@ function App() {
                     <li><strong>7 Colors Available:</strong> Gray, Red, Orange, Yellow, Green, Blue, Purple</li>
                     <li><strong>Flexible Use:</strong> Use colors however you want - priorities, categories, projects, contexts, etc.</li>
                     <li><strong>Visual Indicators:</strong> Each task shows a colored left border AND a small colored dot next to the title</li>
+                    <li><strong>Quick Color Change:</strong> Click the colored dot next to any task title to instantly change its color</li>
                     <li><strong>Color Picker:</strong> Colored circles when creating or editing tasks - click to select</li>
                     <li><strong>Color Filters:</strong> Click color circles below main filters to show only tasks of that color</li>
-                    <li><strong>Edit Anytime:</strong> Change a task's color by editing it</li>
+                    <li><strong>Filter Count Badges:</strong> Each filter button shows the number of matching tasks</li>
                   </ul>
                 </section>
 
