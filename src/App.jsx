@@ -1015,6 +1015,73 @@ function App() {
     }
   }
 
+  // Helper function to count all tasks including subtasks recursively
+  const countAllTasks = (tasks) => {
+    let count = 0
+    tasks.forEach(task => {
+      count++ // Count the task itself
+      if (task.children && task.children.length > 0) {
+        count += countAllTasks(task.children) // Recursively count children
+      }
+    })
+    return count
+  }
+
+  // Helper function to count tasks matching a filter (not including subtasks)
+  const countTasksByFilter = (tasks, filterFn) => {
+    let count = 0
+    tasks.forEach(task => {
+      if (filterFn(task)) {
+        count++
+      }
+      if (task.children && task.children.length > 0) {
+        count += countTasksByFilter(task.children, filterFn)
+      }
+    })
+    return count
+  }
+
+  // Calculate counts for each filter
+  const getFilterCounts = () => {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const weekStart = startOfWeek(today, { weekStartsOn: 1 })
+    const weekEnd = endOfWeek(today, { weekStartsOn: 1 })
+
+    return {
+      all: countAllTasks(todos),
+      active: countTasksByFilter(todos, t => !t.completed),
+      completed: countTasksByFilter(todos, t => t.completed),
+      week: countTasksByFilter(todos, t => !t.completed && t.is_for_week),
+      today: countTasksByFilter(todos, t => {
+        if (t.completed) return false
+        if (t.is_for_today) return true
+        if (t.due_date) {
+          const dueDate = new Date(t.due_date)
+          dueDate.setHours(0, 0, 0, 0)
+          return dueDate <= today
+        }
+        return false
+      }),
+      upcoming: countTasksByFilter(todos, t => {
+        if (t.completed || !t.due_date) return false
+        const dueDate = new Date(t.due_date)
+        dueDate.setHours(0, 0, 0, 0)
+        const nextWeek = new Date(today)
+        nextWeek.setDate(nextWeek.getDate() + 7)
+        return dueDate <= nextWeek
+      }),
+      important: countTasksByFilter(todos, t => !t.completed && t.important),
+      worked: countTasksByFilter(todos, t => t.focused_at),
+      colors: COLORS.reduce((acc, color) => {
+        acc[color.name] = countTasksByFilter(todos, t => (t.color || 'gray') === color.name)
+        return acc
+      }, {})
+    }
+  }
+
+  const filterCounts = getFilterCounts()
+
   const addTodo = async (e) => {
     e.preventDefault()
     console.log('addTodo called with:', newTodo)
@@ -1620,12 +1687,17 @@ function App() {
                 setCompletedStartDate('')
                 setCompletedEndDate('')
               }}
-              className={`px-4 py-2 rounded-lg transition-colors ${
+              className={`px-4 py-2 rounded-lg transition-colors flex items-center gap-2 ${
                 filter === 'all' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
               title="Show all incomplete tasks"
             >
               All
+              <span className={`text-xs px-2 py-0.5 rounded-full ${
+                filter === 'all' ? 'bg-blue-500' : 'bg-gray-300'
+              }`}>
+                {filterCounts.all}
+              </span>
             </button>
             <button
               onClick={() => {
@@ -1633,12 +1705,17 @@ function App() {
                 setCompletedStartDate('')
                 setCompletedEndDate('')
               }}
-              className={`px-4 py-2 rounded-lg transition-colors ${
+              className={`px-4 py-2 rounded-lg transition-colors flex items-center gap-2 ${
                 filter === 'week' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
               title="Show incomplete tasks marked for this week"
             >
               This Week
+              <span className={`text-xs px-2 py-0.5 rounded-full ${
+                filter === 'week' ? 'bg-blue-500' : 'bg-gray-300'
+              }`}>
+                {filterCounts.week}
+              </span>
             </button>
             <button
               onClick={() => {
@@ -1646,12 +1723,17 @@ function App() {
                 setCompletedStartDate('')
                 setCompletedEndDate('')
               }}
-              className={`px-4 py-2 rounded-lg transition-colors ${
+              className={`px-4 py-2 rounded-lg transition-colors flex items-center gap-2 ${
                 filter === 'today' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
               title="Show incomplete tasks due today or overdue"
             >
               Today
+              <span className={`text-xs px-2 py-0.5 rounded-full ${
+                filter === 'today' ? 'bg-blue-500' : 'bg-gray-300'
+              }`}>
+                {filterCounts.today}
+              </span>
             </button>
             <button
               onClick={() => {
@@ -1659,12 +1741,17 @@ function App() {
                 setCompletedStartDate('')
                 setCompletedEndDate('')
               }}
-              className={`px-4 py-2 rounded-lg transition-colors ${
+              className={`px-4 py-2 rounded-lg transition-colors flex items-center gap-2 ${
                 filter === 'upcoming' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
               title="Show all tasks with deadlines (overdue, today, and next 7 days)"
             >
               Upcoming
+              <span className={`text-xs px-2 py-0.5 rounded-full ${
+                filter === 'upcoming' ? 'bg-blue-500' : 'bg-gray-300'
+              }`}>
+                {filterCounts.upcoming}
+              </span>
             </button>
             <button
               onClick={() => {
@@ -1679,6 +1766,11 @@ function App() {
             >
               <AlertCircle size={16} />
               Important
+              <span className={`text-xs px-2 py-0.5 rounded-full ${
+                filter === 'important' ? 'bg-red-500' : 'bg-gray-300'
+              }`}>
+                {filterCounts.important}
+              </span>
             </button>
             <button
               onClick={() => {
@@ -1693,6 +1785,11 @@ function App() {
             >
               <CheckCircle2 size={16} />
               Completed
+              <span className={`text-xs px-2 py-0.5 rounded-full ${
+                filter === 'completed' ? 'bg-green-500' : 'bg-gray-300'
+              }`}>
+                {filterCounts.completed}
+              </span>
             </button>
             <button
               onClick={() => setShowWorkedPeriod(true)}
@@ -1703,26 +1800,37 @@ function App() {
             >
               <Focus size={16} />
               Worked On
+              <span className={`text-xs px-2 py-0.5 rounded-full ${
+                filter === 'worked_today' || filter === 'worked_week' || filter === 'worked_range' ? 'bg-green-500' : 'bg-gray-300'
+              }`}>
+                {filterCounts.worked}
+              </span>
             </button>
             <div className="w-full border-t border-gray-300 my-2"></div>
             <div className="flex gap-2 items-center flex-wrap">
               <span className="text-sm text-gray-600 mr-2">Colors:</span>
               {COLORS.map(color => (
-                <button
-                  key={color.name}
-                  onClick={() => {
-                    setFilter(color.name)
-                    setCompletedStartDate('')
-                    setCompletedEndDate('')
-                  }}
-                  className={`w-8 h-8 rounded-full transition-all ${color.solid} ${
-                    filter === color.name
-                      ? 'ring-2 ring-offset-2 ring-gray-400 scale-110'
-                      : 'hover:scale-105 opacity-80 hover:opacity-100'
-                  }`}
-                  title={`Show ${color.label} tasks`}
-                >
-                </button>
+                <div key={color.name} className="relative">
+                  <button
+                    onClick={() => {
+                      setFilter(color.name)
+                      setCompletedStartDate('')
+                      setCompletedEndDate('')
+                    }}
+                    className={`w-8 h-8 rounded-full transition-all ${color.solid} ${
+                      filter === color.name
+                        ? 'ring-2 ring-offset-2 ring-gray-400 scale-110'
+                        : 'hover:scale-105 opacity-80 hover:opacity-100'
+                    }`}
+                    title={`Show ${color.label} tasks (${filterCounts.colors[color.name]})`}
+                  >
+                  </button>
+                  {filterCounts.colors[color.name] > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-gray-700 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-semibold">
+                      {filterCounts.colors[color.name]}
+                    </span>
+                  )}
+                </div>
               ))}
             </div>
           </div>
