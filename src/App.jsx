@@ -1072,7 +1072,7 @@ function App() {
         return dueDate <= nextWeek
       }),
       important: countTasksByFilter(todos, t => !t.completed && t.important),
-      worked: countTasksByFilter(todos, t => t.focused_at),
+      worked: countTasksByFilter(todos, t => t.worked_today),
       colors: COLORS.reduce((acc, color) => {
         acc[color.name] = countTasksByFilter(todos, t => (t.color || 'gray') === color.name)
         return acc
