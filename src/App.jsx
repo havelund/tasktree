@@ -790,20 +790,6 @@ function TodoItem({ todo, level = 0, onUpdate, onDelete, onAddChild, onMove, onR
               <button
                 onClick={(e) => {
                   e.stopPropagation()
-                  onFocus(todo.id, todo.focused)
-                }}
-                className={`p-1.5 rounded transition-colors ${
-                  focusedTodoId === todo.id || todo.focused
-                    ? 'bg-green-100 text-green-600 hover:bg-green-200'
-                    : 'text-gray-400 hover:bg-gray-100'
-                }`}
-                title={focusedTodoId === todo.id ? 'Currently focused' : (todo.focused ? 'Click to unfocus' : 'Focus on this task')}
-              >
-                <Focus size={16} fill={focusedTodoId === todo.id || todo.focused ? 'currentColor' : 'none'} />
-              </button>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation()
                   onUpdate(todo.id, { important: !todo.important })
                 }}
                 className={`p-1.5 rounded transition-colors ${
@@ -814,6 +800,20 @@ function TodoItem({ todo, level = 0, onUpdate, onDelete, onAddChild, onMove, onR
                 title={todo.important ? 'Remove important' : 'Mark as important'}
               >
                 <AlertCircle size={16} fill={todo.important ? 'currentColor' : 'none'} />
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onFocus(todo.id, todo.focused)
+                }}
+                className={`p-1.5 rounded transition-colors ${
+                  focusedTodoId === todo.id || todo.focused
+                    ? 'bg-green-100 text-green-600 hover:bg-green-200'
+                    : 'text-gray-400 hover:bg-gray-100'
+                }`}
+                title={focusedTodoId === todo.id ? 'Currently focused' : (todo.focused ? 'Click to unfocus' : 'Focus on this task')}
+              >
+                <Focus size={16} fill={focusedTodoId === todo.id || todo.focused ? 'currentColor' : 'none'} />
               </button>
               <button
                 onClick={(e) => {
@@ -1737,24 +1737,6 @@ function App() {
             </button>
             <button
               onClick={() => {
-                setFilter('upcoming')
-                setCompletedStartDate('')
-                setCompletedEndDate('')
-              }}
-              className={`px-4 py-2 rounded-lg transition-colors flex items-center gap-2 ${
-                filter === 'upcoming' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-              title="Show all tasks with deadlines (overdue, today, and next 7 days)"
-            >
-              Upcoming
-              <span className={`text-xs px-2 py-0.5 rounded-full ${
-                filter === 'upcoming' ? 'bg-blue-500' : 'bg-gray-300'
-              }`}>
-                {filterCounts.upcoming}
-              </span>
-            </button>
-            <button
-              onClick={() => {
                 setFilter('important')
                 setCompletedStartDate('')
                 setCompletedEndDate('')
@@ -1770,6 +1752,24 @@ function App() {
                 filter === 'important' ? 'bg-red-500' : 'bg-gray-300'
               }`}>
                 {filterCounts.important}
+              </span>
+            </button>
+            <button
+              onClick={() => {
+                setFilter('upcoming')
+                setCompletedStartDate('')
+                setCompletedEndDate('')
+              }}
+              className={`px-4 py-2 rounded-lg transition-colors flex items-center gap-2 ${
+                filter === 'upcoming' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+              title="Show all tasks with deadlines (overdue, today, and next 7 days)"
+            >
+              Upcoming
+              <span className={`text-xs px-2 py-0.5 rounded-full ${
+                filter === 'upcoming' ? 'bg-blue-500' : 'bg-gray-300'
+              }`}>
+                {filterCounts.upcoming}
               </span>
             </button>
             <button

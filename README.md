@@ -9,7 +9,7 @@ This todo list application offers two features together that I was not able to f
 
 **Key Elements:**
 - **Add Task** - Click the "+" button at the top to create new tasks
-- **Filter Buttons** - All, This Week, Today, Upcoming, Important, Completed, Worked On (each shows task count)
+- **Filter Buttons** - All, This Week, Today, Important, Upcoming, Completed, Worked On (each shows task count)
 - **Color Filters** - Seven color circles to filter tasks by category
 - **Task Actions** - Each task has buttons for: comments, add subtask, attachments, edit, This Week flag, due date, focus tracking, important flag, and delete
 - **Hierarchical Structure** - Tasks can have unlimited subtasks (expand/collapse with arrow)
