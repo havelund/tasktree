@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Plus, Calendar, CheckCircle2, Circle, Star, Trash2, Edit2, Save, X, Paperclip, FileText, ChevronDown, ChevronRight, MessageSquare, AlertCircle, Focus, Download, BarChart3, HelpCircle, Moon, Sun, CalendarDays, Database } from 'lucide-react'
+import { Plus, Calendar, CheckCircle2, Circle, Star, Trash2, Edit2, Save, X, Paperclip, FileText, ChevronDown, ChevronRight, MessageSquare, AlertCircle, Focus, Download, BarChart3, HelpCircle, Moon, Sun, CalendarDays, Database, Search } from 'lucide-react'
 import { format, parseISO, startOfWeek, endOfWeek } from 'date-fns'
 import DatePicker from './DatePicker'
 
@@ -1000,6 +1000,7 @@ function App() {
   const [workedEndDate, setWorkedEndDate] = useState('')
   const [showHelp, setShowHelp] = useState(false)
   const [darkMode, setDarkMode] = useState(false)
+  const [searchText, setSearchText] = useState('')
 
   useEffect(() => {
     fetchTodos()
@@ -1081,6 +1082,31 @@ function App() {
   }
 
   const filterCounts = getFilterCounts()
+
+  // Search function: filters tasks by matching title or comments
+  const searchTodos = (todoList, query) => {
+    if (!query.trim()) return todoList
+    const lowerQuery = query.toLowerCase()
+    
+    const matchesTodo = (todo) => {
+      if (todo.title && todo.title.toLowerCase().includes(lowerQuery)) return true
+      if (todo.comments && todo.comments.some(c => c.text && c.text.toLowerCase().includes(lowerQuery))) return true
+      return false
+    }
+    
+    const filterRecursive = (todos) => {
+      const result = []
+      todos.forEach(todo => {
+        const childResults = todo.children ? filterRecursive(todo.children) : []
+        if (matchesTodo(todo) || childResults.length > 0) {
+          result.push({ ...todo, children: childResults.length > 0 ? childResults : (matchesTodo(todo) ? (todo.children || []) : []) })
+        }
+      })
+      return result
+    }
+    
+    return filterRecursive(todoList)
+  }
 
   const addTodo = async (e) => {
     e.preventDefault()
@@ -1364,11 +1390,13 @@ function App() {
     return filterCompleted(todos)
   }
 
-  const filteredTodos = showAllForNavigation 
+  const preSearchTodos = showAllForNavigation 
     ? todos 
     : (filter === 'completed' && completedStartDate && completedEndDate 
       ? getCompletedInPeriod() 
       : filterTodos(JSON.parse(JSON.stringify(todos)), filter))
+
+  const filteredTodos = searchTodos(preSearchTodos, searchText)
 
   const isSpecificFilter = filter === 'today' || filter === 'week' || filter === 'upcoming' || filter === 'important' || filter === 'completed' || filter === 'worked_today' || filter === 'worked_week' || filter === 'worked_range' || COLORS.find(c => c.name === filter)
 
@@ -1678,6 +1706,32 @@ function App() {
             </div>
           </form>
         )}
+
+        <div className={`rounded-lg shadow-md p-3 mb-6 ${darkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white'}`}>
+          <div className="relative">
+            <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              placeholder="Search tasks and comments..."
+              className={`w-full pl-10 pr-10 py-2 rounded-lg border outline-none transition-colors ${
+                darkMode
+                  ? 'bg-gray-700 border-gray-600 text-gray-100 placeholder-gray-400 focus:border-blue-500'
+                  : 'bg-gray-50 border-gray-300 text-gray-800 placeholder-gray-400 focus:border-blue-500 focus:bg-white'
+              }`}
+            />
+            {searchText && (
+              <button
+                onClick={() => setSearchText('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                title="Clear search"
+              >
+                <X size={16} />
+              </button>
+            )}
+          </div>
+        </div>
 
         <div className={`rounded-lg shadow-md p-4 mb-6 ${darkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white'}`}>
           <div className="flex gap-2 items-center flex-wrap">
