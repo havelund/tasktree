@@ -1083,7 +1083,7 @@ function App() {
 
   const filterCounts = getFilterCounts()
 
-  // Search function: filters tasks by matching title or comments
+  // Search function: finds tasks matching title or comments, flattened with parent breadcrumbs
   const searchTodos = (todoList, query) => {
     if (!query.trim()) return todoList
     const lowerQuery = query.toLowerCase()
@@ -1094,18 +1094,24 @@ function App() {
       return false
     }
     
-    const filterRecursive = (todos) => {
+    const collectMatching = (todos, parentPath = []) => {
       const result = []
       todos.forEach(todo => {
-        const childResults = todo.children ? filterRecursive(todo.children) : []
-        if (matchesTodo(todo) || childResults.length > 0) {
-          result.push({ ...todo, children: childResults.length > 0 ? childResults : (matchesTodo(todo) ? (todo.children || []) : []) })
+        if (matchesTodo(todo)) {
+          result.push({
+            ...todo,
+            children: todo.children || [],
+            parentPath: parentPath.length > 0 ? [...parentPath] : null
+          })
+        }
+        if (todo.children && todo.children.length > 0) {
+          result.push(...collectMatching(todo.children, [...parentPath, todo.title]))
         }
       })
       return result
     }
     
-    return filterRecursive(todoList)
+    return collectMatching(todoList)
   }
 
   const addTodo = async (e) => {
