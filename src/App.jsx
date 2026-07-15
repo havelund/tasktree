@@ -1105,7 +1105,7 @@ function App() {
           })
         }
         if (todo.children && todo.children.length > 0) {
-          result.push(...collectMatching(todo.children, [...parentPath, todo.title]))
+          result.push(...collectMatching(todo.children, [...parentPath, { id: todo.id, title: todo.title }]))
         }
       })
       return result
