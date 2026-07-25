@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
-import { Plus, Calendar, CheckCircle2, Circle, Star, Trash2, Edit2, Save, X, Paperclip, FileText, ChevronDown, ChevronRight, MessageSquare, AlertCircle, Focus, Download, BarChart3, HelpCircle, Moon, Sun, CalendarDays, Database, Search } from 'lucide-react'
+import { Plus, Calendar, CheckCircle2, Circle, Square, CheckSquare, Star, Trash2, Edit2, Save, X, Paperclip, FileText, ChevronDown, ChevronRight, MessageSquare, AlertCircle, Focus, Download, BarChart3, HelpCircle, Moon, Sun, CalendarDays, Database, Search, GitGraph } from 'lucide-react'
 import { format, parseISO, startOfWeek, endOfWeek } from 'date-fns'
 import DatePicker from './DatePicker'
+import TaskGraph from './TaskGraph'
 
 const API_URL = 'http://localhost:5000/api'
 
@@ -28,6 +29,35 @@ const linkifyText = (text) => {
       )
     }
     return part
+  })
+}
+
+// Render comment text with markdown checkbox support
+const renderCommentText = (text, onToggleCheckbox) => {
+  if (!text) return null
+  const lines = text.split('\n')
+  const checkboxRegex = /^(\s*)-\s*\[([ xX])\]\s*(.*)$/
+  
+  return lines.map((line, lineIndex) => {
+    const match = line.match(checkboxRegex)
+    if (match) {
+      const indent = match[1]
+      const checked = match[2].toLowerCase() === 'x'
+      const label = match[3]
+      return (
+        <div key={lineIndex} className="flex items-start gap-2 py-0.5" style={{ paddingLeft: indent.length * 8 }}>
+          <input
+            type="checkbox"
+            checked={checked}
+            onChange={() => onToggleCheckbox(lineIndex)}
+            className="mt-1 cursor-pointer accent-blue-600"
+            onClick={(e) => e.stopPropagation()}
+          />
+          <span className={checked ? 'line-through text-gray-400' : ''}>{linkifyText(label)}</span>
+        </div>
+      )
+    }
+    return <div key={lineIndex}>{linkifyText(line) || '\u00A0'}</div>
   })
 }
 
@@ -192,7 +222,7 @@ function TodoItem({ todo, level = 0, onUpdate, onDelete, onAddChild, onMove, onR
     document.body.classList.remove('dragging')
     const draggedId = parseInt(e.dataTransfer.getData('text/plain'))
     if (draggedId !== todo.id) {
-      await onMove(draggedId, todo.id, false)
+      await onMove(draggedId, todo.id, false, true)
     }
   }
 
@@ -232,6 +262,27 @@ function TodoItem({ todo, level = 0, onUpdate, onDelete, onAddChild, onMove, onR
       await onRefresh()
     } catch (error) {
       console.error('Error deleting comment:', error)
+    }
+  }
+
+  const toggleCommentCheckbox = async (commentId, commentText, lineIndex) => {
+    const lines = commentText.split('\n')
+    const line = lines[lineIndex]
+    if (line.match(/- \[ \]/)) {
+      lines[lineIndex] = line.replace('- [ ]', '- [x]')
+    } else if (line.match(/- \[[xX]\]/)) {
+      lines[lineIndex] = line.replace(/- \[[xX]\]/, '- [ ]')
+    }
+    const newText = lines.join('\n')
+    try {
+      await fetch(`${API_URL}/todos/${todo.id}/comments/${commentId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: newText })
+      })
+      await onRefresh()
+    } catch (error) {
+      console.error('Error toggling checkbox:', error)
     }
   }
 
@@ -415,7 +466,7 @@ function TodoItem({ todo, level = 0, onUpdate, onDelete, onAddChild, onMove, onR
               }`}
               title={todo.completed ? 'Click to mark as incomplete (restore task)' : 'Mark as complete'}
             >
-              {todo.completed ? <CheckCircle2 size={20} /> : <Circle size={20} />}
+              {todo.completed ? <CheckSquare size={20} /> : <Square size={20} />}
             </button>
             
             <div 
@@ -575,9 +626,9 @@ function TodoItem({ todo, level = 0, onUpdate, onDelete, onAddChild, onMove, onR
                           {todo.comments.length} {todo.comments.length === 1 ? 'comment' : 'comments'}
                         </span>
                       </div>
-                      <div className="space-y-2">
+                      <div className="space-y-3">
                         {todo.comments.map((comment) => (
-                          <div key={comment.id} className="bg-gray-50 rounded p-2 text-sm">
+                          <div key={comment.id} className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm shadow-sm">
                             {editingCommentId === comment.id ? (
                               <div className="space-y-2">
                                 <textarea
@@ -615,13 +666,13 @@ function TodoItem({ todo, level = 0, onUpdate, onDelete, onAddChild, onMove, onR
                             ) : (
                               <>
                                 <div className="flex justify-between items-start gap-2">
-                                  <p 
+                                  <div 
                                     className="text-gray-700 flex-1" 
                                     style={{whiteSpace: 'pre-wrap', userSelect: 'text'}}
                                     onMouseDown={(e) => e.stopPropagation()}
                                   >
-                                    {linkifyText(comment.text)}
-                                  </p>
+                                    {renderCommentText(comment.text, (lineIndex) => toggleCommentCheckbox(comment.id, comment.text, lineIndex))}
+                                  </div>
                                   <div className="flex gap-1">
                                     <button
                                       onClick={(e) => {
@@ -933,7 +984,7 @@ function TodoItem({ todo, level = 0, onUpdate, onDelete, onAddChild, onMove, onR
 
       {hasChildren && !collapsed && !hideChildren && (
         <div className="mt-2">
-          {todo.children.map((child, index) => (
+          {todo.children.filter(child => !child.completed).map((child, index) => (
             <TodoItem
               key={child.id}
               todo={child}
@@ -999,6 +1050,7 @@ function App() {
   const [workedStartDate, setWorkedStartDate] = useState('')
   const [workedEndDate, setWorkedEndDate] = useState('')
   const [showHelp, setShowHelp] = useState(false)
+  const [showGraph, setShowGraph] = useState(false)
   const [darkMode, setDarkMode] = useState(false)
   const [searchText, setSearchText] = useState('')
 
@@ -1094,10 +1146,12 @@ function App() {
       return false
     }
     
+    const seen = new Set()
     const collectMatching = (todos, parentPath = []) => {
       const result = []
       todos.forEach(todo => {
-        if (matchesTodo(todo)) {
+        if (matchesTodo(todo) && !seen.has(todo.id)) {
+          seen.add(todo.id)
           result.push({
             ...todo,
             children: todo.children || [],
@@ -1203,12 +1257,12 @@ function App() {
     }
   }
 
-  const moveTodo = async (draggedId, targetId, after = false) => {
+  const moveTodo = async (draggedId, targetId, after = false, into = false) => {
     try {
       await fetch(`${API_URL}/todos/${draggedId}/move`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ target_id: targetId, after })
+        body: JSON.stringify({ target_id: targetId, after, into })
       })
       await fetchTodos()
     } catch (error) {
@@ -1551,8 +1605,8 @@ function App() {
     URL.revokeObjectURL(url)
   }
 
-  const weekStart = format(startOfWeek(new Date()), 'MMM d')
-  const weekEnd = format(endOfWeek(new Date()), 'MMM d, yyyy')
+  const weekStart = format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'MMM d')
+  const weekEnd = format(endOfWeek(new Date(), { weekStartsOn: 1 }), 'MMM d, yyyy')
 
   return (
     <div className={`min-h-screen transition-colors ${darkMode ? 'bg-gradient-to-br from-gray-900 to-gray-800' : 'bg-gradient-to-br from-blue-50 to-indigo-100'}`}>
@@ -1583,6 +1637,14 @@ function App() {
               title={darkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
             >
               {darkMode ? <Sun size={20} /> : <Moon size={20} />}
+            </button>
+            <button
+              onClick={() => setShowGraph(true)}
+              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2"
+              title="View Task Graph"
+            >
+              <GitGraph size={20} />
+              Graph
             </button>
             <button
               onClick={() => setShowHelp(true)}
@@ -1917,7 +1979,7 @@ function App() {
                   onFocus={handleFocus}
                   darkMode={darkMode}
                   collapseAll={collapseAll}
-                  hideChildren={isSpecificFilter && !showAllForNavigation}
+                  hideChildren={false}
                   onNavigateToParent={(parentId) => {
                     // Find the parent in todos
                     const findTodo = (list, id) => {
@@ -1939,11 +2001,12 @@ function App() {
                     }
                     ancestorIds.push(parentId)
                     
-                    // Temporarily show all todos to ensure parent is visible
-                    setShowAllForNavigation(true)
+                    // Clear search and switch to all filter first
+                    setFilter('all')
+                    setSearchText('')
                     setExpandedTaskIds(ancestorIds)
                     
-                    // Poll for the element to appear with multiple retries
+                    // Poll for the element to appear after re-render
                     let attempts = 0
                     const maxAttempts = 20
                     const pollInterval = 100
@@ -1955,10 +2018,6 @@ function App() {
                       if (parentElement) {
                         parentElement.scrollIntoView({ behavior: 'smooth', block: 'center' })
                         parentElement.classList.add('ring-2', 'ring-blue-500')
-                        // Switch to 'all' filter immediately to keep parent visible
-                        setFilter('all')
-                        setShowAllForNavigation(false)
-                        // Keep expandedTaskIds so tasks stay expanded
                         // Remove highlight after 2 seconds
                         setTimeout(() => {
                           parentElement.classList.remove('ring-2', 'ring-blue-500')
@@ -1967,11 +2026,10 @@ function App() {
                         setTimeout(pollForElement, pollInterval)
                       } else {
                         setExpandedTaskIds([])
-                        setShowAllForNavigation(false)
                       }
                     }
                     
-                    // Start polling after a short delay
+                    // Start polling after a short delay for re-render
                     setTimeout(pollForElement, 100)
                   }}
                   expandedTaskId={expandedTaskId}
@@ -2003,6 +2061,48 @@ function App() {
           )}
         </div>
 
+        {showGraph && (
+          <TaskGraph
+            todos={todos}
+            darkMode={darkMode}
+            onClose={() => setShowGraph(false)}
+            onNavigateToTask={(todoId) => {
+              // Find all ancestors that need expanding
+              const findAncestors = (list, targetId, path = []) => {
+                for (const t of list) {
+                  if (t.id === targetId) return path
+                  if (t.children && t.children.length > 0) {
+                    const found = findAncestors(t.children, targetId, [...path, t.id])
+                    if (found) return found
+                  }
+                }
+                return null
+              }
+              const ancestors = findAncestors(todos, todoId) || []
+              
+              setShowGraph(false)
+              setFilter('all')
+              setSearchText('')
+              setExpandedTaskIds([...ancestors, todoId])
+              setTimeout(() => {
+                let attempts = 0
+                const poll = () => {
+                  attempts++
+                  const el = document.getElementById(`todo-${todoId}`)
+                  if (el) {
+                    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                    el.classList.add('ring-2', 'ring-blue-500')
+                    setTimeout(() => el.classList.remove('ring-2', 'ring-blue-500'), 2000)
+                  } else if (attempts < 20) {
+                    setTimeout(poll, 100)
+                  }
+                }
+                poll()
+              }, 100)
+            }}
+          />
+        )}
+
         {showHelp && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setShowHelp(false)}>
             <div className="bg-white rounded-lg shadow-xl p-6 max-w-3xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
@@ -2022,8 +2122,8 @@ function App() {
                   <h3 className="text-xl font-semibold text-gray-800 mb-3">📋 Basic Task Management</h3>
                   <ul className="space-y-2 ml-4">
                     <li><strong>Add Task:</strong> Click "Add new task..." button, fill in title, description (optional), due date (optional), and color</li>
-                    <li><strong>Complete Task:</strong> Click the circle icon to mark as complete (✓)</li>
-                    <li><strong>Uncomplete Task:</strong> Click the green checkmark (✓) on completed tasks to restore them to active</li>
+                    <li><strong>Complete Task:</strong> Click the checkbox to mark as complete (☑)</li>
+                    <li><strong>Uncomplete Task:</strong> Click the green checkbox (☑) on completed tasks to restore them to active</li>
                     <li><strong>Edit Task:</strong> Click the pencil icon (✏️) to edit title, description, due date, and color</li>
                     <li><strong>Delete Task:</strong> Click the trash icon (🗑️) to delete (also deletes all subtasks)</li>
                     <li><strong>Expand/Collapse:</strong> Click task title or arrow (▼/▶) to show/hide details and subtasks</li>
@@ -2036,8 +2136,8 @@ function App() {
                   <ul className="space-y-2 ml-4">
                     <li><strong>Add Subtask:</strong> Click the plus icon (➕) on any task to add a subtask underneath</li>
                     <li><strong>Unlimited Nesting:</strong> Subtasks can have their own subtasks, creating deep hierarchies</li>
-                    <li><strong>Drag & Drop:</strong> Click and drag tasks to reorder them or move between parents</li>
-                    <li><strong>Drop Zones:</strong> Appear when dragging - drop above, below, or at end of lists</li>
+                    <li><strong>Drag & Drop:</strong> Click and drag tasks to reorder, move between parents, or drop onto a task to make it a subtask</li>
+                    <li><strong>Drop Zones:</strong> Drop in gaps between tasks to reorder, or drop directly on a task to move into it as a child</li>
                   </ul>
                 </section>
 
@@ -2074,16 +2174,19 @@ function App() {
                     <li><strong>Multiple Comments:</strong> Each task can have unlimited separate comments</li>
                     <li><strong>Edit Comment:</strong> Click pencil icon on any comment to edit it</li>
                     <li><strong>Delete Comment:</strong> Click X icon to remove a comment</li>
-                    <li><strong>Comment Attachments:</strong> Click paperclip icon (📎) on any comment to attach files</li>
+                    <li><strong>Comment Checklists:</strong> Type <code className="bg-gray-100 px-1 rounded">- [ ] item</code> in a comment to create a checklist. Click checkboxes to toggle them.</li>
+                    <li><strong>Comment Attachments:</strong> Click paperclip icon (📎) on any comment to attach files (supports PDF, images, Office docs including PowerPoint, and more)</li>
+                    <li><strong>Links:</strong> URLs in comments are automatically clickable</li>
                     <li><strong>View Comments:</strong> Click comment count when task is collapsed to expand and view</li>
                   </ul>
                 </section>
 
                 <section>
-                  <h3 className="text-xl font-semibold text-gray-800 mb-3">🔍 Filters & Views</h3>
+                  <h3 className="text-xl font-semibold text-gray-800 mb-3">🔍 Search, Filters & Views</h3>
                   <ul className="space-y-2 ml-4">
+                    <li><strong>Text Search:</strong> Type in the search bar to find tasks by title or comment content. Results are shown as a flat list with parent breadcrumbs. Click a breadcrumb to navigate to the parent task.</li>
                     <li><strong>All:</strong> Shows all incomplete tasks with full hierarchy</li>
-                    <li><strong>This Week:</strong> Shows tasks marked for this week (flat list with parent breadcrumbs)</li>
+                    <li><strong>This Week:</strong> Shows tasks marked for this week, Monday to Sunday (flat list with parent breadcrumbs)</li>
                     <li><strong>Today:</strong> Shows tasks marked for today OR tasks due today/overdue (flat list)</li>
                     <li><strong>Upcoming:</strong> Shows all tasks with deadlines - overdue, today, and next 7 days, sorted by date (flat list)</li>
                     <li><strong>Important:</strong> Shows important tasks (flat list)</li>
@@ -2118,6 +2221,18 @@ function App() {
                 </section>
 
                 <section>
+                  <h3 className="text-xl font-semibold text-gray-800 mb-3">🗺️ Task Graph</h3>
+                  <ul className="space-y-2 ml-4">
+                    <li><strong>Open Graph:</strong> Click the purple "Graph" button to see a visual Graphviz rendering of your task tree</li>
+                    <li><strong>Color-Coded:</strong> Nodes are colored to match task colors, with ⭐ and 📅 icons for important/today tasks</li>
+                    <li><strong>Clickable Nodes:</strong> Click any node to close the graph and navigate to that task</li>
+                    <li><strong>Zoom:</strong> Use +/- buttons to zoom in and out, or reset to 100%</li>
+                    <li><strong>Layout:</strong> Toggle between horizontal (left-to-right) and vertical (top-down) layout</li>
+                    <li><strong>Scrollable:</strong> Scroll around large graphs with native scrollbars</li>
+                  </ul>
+                </section>
+
+                <section>
                   <h3 className="text-xl font-semibold text-gray-800 mb-3">🌙 Appearance</h3>
                   <ul className="space-y-2 ml-4">
                     <li><strong>Dark Mode:</strong> Click moon/sun icon in top-right to toggle dark mode</li>
@@ -2137,7 +2252,7 @@ function App() {
                     <li>Use subtasks to break down complex tasks into manageable steps</li>
                     <li>In filtered views, expand tasks to see their subtasks even if they don't match the filter</li>
                     <li>Comments are great for tracking progress notes and updates - you can attach files to comments too!</li>
-                    <li>Drag & drop works for reordering at any level of the hierarchy</li>
+                    <li>Drag & drop onto a task to make it a subtask; drop between tasks to reorder</li>
                     <li>Try dark mode for reduced eye strain in low-light environments</li>
                   </ul>
                 </section>

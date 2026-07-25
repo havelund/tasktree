@@ -11,7 +11,7 @@ app = Flask(__name__)
 CORS(app)
 
 UPLOAD_FOLDER = 'uploads'
-ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp', 'svg', 'doc', 'docx', 'xls', 'xlsx', 'zip'}
+ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp', 'svg', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'csv', 'md', 'html', 'zip', 'tar', 'gz'}
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 
@@ -306,6 +306,7 @@ def move_todo(todo_id):
         data = request.json
         target_id = data.get('target_id')
         after = data.get('after', False)
+        into = data.get('into', False)
         
         dragged_todo = session.query(Todo).get(todo_id)
         target_todo = session.query(Todo).get(target_id)
@@ -313,29 +314,69 @@ def move_todo(todo_id):
         if not dragged_todo or not target_todo:
             return jsonify({'error': 'Todo not found'}), 404
         
-        if dragged_todo.parent_id != target_todo.parent_id:
-            return jsonify({'error': 'Cannot move between different parents'}), 400
+        if into:
+            # Move as child of target task
+            # Reorder old siblings
+            old_siblings = session.query(Todo).filter(Todo.parent_id == dragged_todo.parent_id, Todo.id != todo_id).order_by(Todo.sort_order.asc(), Todo.created_at.asc()).all()
+            for i, sibling in enumerate(old_siblings):
+                sibling.sort_order = i
+            
+            # Re-parent to target
+            dragged_todo.parent_id = target_id
+            
+            # Add at end of target's children
+            max_order = session.query(Todo).filter(Todo.parent_id == target_id, Todo.id != todo_id).count()
+            dragged_todo.sort_order = max_order
+            
+            session.commit()
+            return jsonify({'success': True})
         
-        siblings = session.query(Todo).filter(Todo.parent_id == dragged_todo.parent_id).order_by(Todo.sort_order.asc(), Todo.created_at.asc()).all()
-        
-        dragged_index = next((i for i, t in enumerate(siblings) if t.id == todo_id), None)
-        target_index = next((i for i, t in enumerate(siblings) if t.id == target_id), None)
-        
-        if dragged_index is None or target_index is None:
-            return jsonify({'error': 'Todo not found in siblings'}), 404
-        
-        dragged_item = siblings.pop(dragged_index)
-        
-        if after:
-            if dragged_index < target_index:
-                siblings.insert(target_index, dragged_item)
+        if dragged_todo.parent_id == target_todo.parent_id:
+            # Same parent: reorder within siblings
+            siblings = session.query(Todo).filter(Todo.parent_id == dragged_todo.parent_id).order_by(Todo.sort_order.asc(), Todo.created_at.asc()).all()
+            
+            dragged_index = next((i for i, t in enumerate(siblings) if t.id == todo_id), None)
+            target_index = next((i for i, t in enumerate(siblings) if t.id == target_id), None)
+            
+            if dragged_index is None or target_index is None:
+                return jsonify({'error': 'Todo not found in siblings'}), 404
+            
+            dragged_item = siblings.pop(dragged_index)
+            
+            if after:
+                if dragged_index < target_index:
+                    siblings.insert(target_index, dragged_item)
+                else:
+                    siblings.insert(target_index + 1, dragged_item)
             else:
-                siblings.insert(target_index + 1, dragged_item)
+                siblings.insert(target_index, dragged_item)
+            
+            for i, sibling in enumerate(siblings):
+                sibling.sort_order = i
         else:
-            siblings.insert(target_index, dragged_item)
-        
-        for i, sibling in enumerate(siblings):
-            sibling.sort_order = i
+            # Different parent: re-parent and reorder
+            # Reorder old siblings
+            old_siblings = session.query(Todo).filter(Todo.parent_id == dragged_todo.parent_id, Todo.id != todo_id).order_by(Todo.sort_order.asc(), Todo.created_at.asc()).all()
+            for i, sibling in enumerate(old_siblings):
+                sibling.sort_order = i
+            
+            # Move to new parent
+            dragged_todo.parent_id = target_todo.parent_id
+            
+            # Insert among new siblings
+            new_siblings = session.query(Todo).filter(Todo.parent_id == target_todo.parent_id, Todo.id != todo_id).order_by(Todo.sort_order.asc(), Todo.created_at.asc()).all()
+            target_index = next((i for i, t in enumerate(new_siblings) if t.id == target_id), None)
+            
+            if target_index is not None:
+                if after:
+                    new_siblings.insert(target_index + 1, dragged_todo)
+                else:
+                    new_siblings.insert(target_index, dragged_todo)
+            else:
+                new_siblings.append(dragged_todo)
+            
+            for i, sibling in enumerate(new_siblings):
+                sibling.sort_order = i
         
         session.commit()
         return jsonify({'success': True})

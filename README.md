@@ -19,9 +19,10 @@ This todo list application offers two features together that I was not able to f
 
 ### 📋 Core Task Management
 - **Hierarchical Tasks** - Unlimited nesting with parent-child relationships
-- **Drag & Drop** - Reorder tasks and move between parents
+- **Drag & Drop** - Reorder tasks within the same level, move between parents, or drop onto a task to make it a subtask
 - **Quick Actions** - Complete, edit, delete, and add subtasks
 - **Auto-Hide Completed** - Keep your lists clean and focused
+- **Square Checkboxes** - Familiar checkbox-style task completion
 
 ### 🏷️ Task Organization
 - **Today Flag** (📅) - Mark tasks for immediate focus
@@ -32,27 +33,39 @@ This todo list application offers two features together that I was not able to f
 - **Quick Color Change** - Click the colored dot next to any task title to instantly change its color
 - **Due Dates** - Set deadlines and track overdue tasks
 
-### 🔍 Smart Filtering
+### 🔍 Smart Filtering & Search
+- **Text Search** - Search tasks by title or comment content, results shown as flat list with parent breadcrumbs
 - **All** - View complete hierarchy
-- **This Week** - Tasks marked for the week
+- **This Week** - Tasks marked for the week (Monday to Sunday)
 - **Today** - Tasks marked for today OR due today/overdue
 - **Upcoming** - All tasks with deadlines (overdue, today, and next 7 days)
 - **Important** - Critical tasks only
 - **Color Filters** - Filter by any of 7 colors
 - **Task Count Badges** - Each filter button shows the number of matching tasks at a glance
 - **Completed Period** - View tasks completed in date range
-- **Parent Breadcrumbs** - See task location in filtered views (📁 Parent › Grandparent)
+- **Parent Breadcrumbs** - See task location in filtered/search views (📁 Parent › Grandparent), click to navigate
 - **Expandable in Filters** - View subtasks even in filtered views
 
-### 💬 Collaboration & Notes
-- **Comments** - Add unlimited notes to any task
+### 💬 Comments & Notes
+- **Comments** - Add unlimited notes to any task with colored card styling
 - **Edit Comments** - Update notes as tasks progress
-- **Attachments** - Upload files to tasks
+- **Comment Checklists** - Use markdown checkboxes in comments (`- [ ] item`) for interactive checklists
+- **Clickable Checkboxes** - Check/uncheck items directly, checked items show with strikethrough
+- **Attachments** - Upload files to tasks and comments (supports PDF, images, Office docs including PowerPoint, archives, and more)
+- **Links** - URLs in comments are automatically clickable
 
 ### 📊 Reports & Export
 - **Markdown Export** - Export all active tasks
 - **Completed Report** - Generate reports for completed tasks in date range
 - **Worked On Report** - Track focus time across tasks
+
+### 🗺️ Task Graph
+- **Visual Graph** - Graphviz-powered visualization of your entire task tree
+- **Color-Coded Nodes** - Nodes match task colors, with icons for important (⭐) and today (📅)
+- **Clickable Nodes** - Click any node to navigate to that task in the list
+- **Zoom Controls** - Zoom in/out with percentage display
+- **Layout Toggle** - Switch between horizontal (left-to-right) and vertical (top-down) layouts
+- **Dark Mode Support** - Graph adapts to your theme
 
 ### 🌙 User Experience
 - **Dark Mode** - Easy on the eyes
@@ -130,6 +143,8 @@ todo/
 ├── uploads/             # File attachments
 └── src/
     ├── App.jsx          # Main React application
+    ├── TaskGraph.jsx     # Graphviz task visualization
+    ├── DatePicker.jsx    # Date picker component
     └── main.jsx         # React entry point
 ```
 
@@ -147,6 +162,7 @@ todo/
 - **TailwindCSS** - Utility-first CSS
 - **Lucide React** - Icon library
 - **date-fns** - Date manipulation
+- **@viz-js/viz** - Graphviz rendering for task graph
 
 ## API Endpoints
 
