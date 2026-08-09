@@ -130,6 +130,66 @@ class WorkSession(Base):
 
 Base.metadata.create_all(engine)
 
+# ---------------------------------------------------------------------------
+# General Undo support
+# Before every mutating request we snapshot all tables into an in-memory stack.
+# /api/undo restores the most recent snapshot, reverting the last action.
+# ---------------------------------------------------------------------------
+UNDO_STACK = []
+MAX_UNDO = 50
+
+def _row_to_dict(obj):
+    return {c.name: getattr(obj, c.name) for c in obj.__table__.columns}
+
+def snapshot_state():
+    s = Session()
+    try:
+        return {
+            'todos': [_row_to_dict(x) for x in s.query(Todo).all()],
+            'comments': [_row_to_dict(x) for x in s.query(Comment).all()],
+            'work_sessions': [_row_to_dict(x) for x in s.query(WorkSession).all()],
+        }
+    finally:
+        s.close()
+
+def restore_state(snap):
+    s = Session()
+    try:
+        s.query(Comment).delete()
+        s.query(WorkSession).delete()
+        s.query(Todo).delete()
+        s.commit()
+        for row in snap['todos']:
+            s.add(Todo(**row))
+        for row in snap['comments']:
+            s.add(Comment(**row))
+        for row in snap['work_sessions']:
+            s.add(WorkSession(**row))
+        s.commit()
+    finally:
+        s.close()
+
+@app.before_request
+def _snapshot_before_mutation():
+    if request.method in ('POST', 'PUT', 'PATCH', 'DELETE'):
+        p = request.path
+        if p.startswith('/api') and not p.startswith('/api/undo'):
+            UNDO_STACK.append(snapshot_state())
+            if len(UNDO_STACK) > MAX_UNDO:
+                UNDO_STACK.pop(0)
+
+@app.route('/api/undo', methods=['POST'])
+def undo():
+    if not UNDO_STACK:
+        return jsonify({'error': 'Nothing to undo'}), 400
+    snap = UNDO_STACK.pop()
+    restore_state(snap)
+    return jsonify({'success': True, 'remaining': len(UNDO_STACK)})
+
+@app.route('/api/undo/count', methods=['GET'])
+def undo_count():
+    return jsonify({'count': len(UNDO_STACK)})
+
 @app.route('/api/todos', methods=['GET'])
 def get_todos():
     session = Session()

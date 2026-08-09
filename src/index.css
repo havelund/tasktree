@@ -8,3 +8,60 @@ body.dragging .drop-zone {
   margin-top: 0.5rem;
   margin-bottom: 0.5rem;
 }
+
+@keyframes poof {
+  0% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+    filter: blur(0);
+  }
+  25% {
+    transform: scale(1.2) rotate(-3deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.1) rotate(12deg);
+    opacity: 0;
+    filter: blur(6px);
+  }
+}
+
+.poof-animate {
+  animation: poof 0.6s ease-in forwards;
+  transform-origin: center;
+  pointer-events: none;
+}
+
+/* Smoke-puff particle burst overlay */
+.poof-cloud {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 30;
+}
+
+.poof-puff {
+  position: absolute;
+  width: 48px;
+  height: 48px;
+  border-radius: 9999px;
+  background: radial-gradient(circle, rgba(226,232,240,0.95) 0%, rgba(148,163,184,0.7) 55%, rgba(148,163,184,0) 72%);
+  animation: poof-particle 0.6s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+}
+
+@keyframes poof-particle {
+  0% {
+    transform: translate(0, 0) scale(0.3);
+    opacity: 0.95;
+  }
+  70% {
+    opacity: 0.85;
+  }
+  100% {
+    transform: translate(var(--tx), var(--ty)) scale(1.6);
+    opacity: 0;
+  }
+}

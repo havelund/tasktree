@@ -1,10 +1,14 @@
 import { useState, useEffect } from 'react'
-import { Plus, Calendar, CheckCircle2, Circle, Square, CheckSquare, Star, Trash2, Edit2, Save, X, Paperclip, FileText, ChevronDown, ChevronRight, MessageSquare, AlertCircle, Focus, Download, BarChart3, HelpCircle, Moon, Sun, CalendarDays, Database, Search, GitGraph } from 'lucide-react'
+import { Plus, Calendar, CheckCircle2, Circle, Square, CheckSquare, Star, Trash2, Edit2, Save, X, Paperclip, FileText, ChevronDown, ChevronRight, MessageSquare, AlertCircle, Focus, Download, BarChart3, HelpCircle, Moon, Sun, CalendarDays, Database, Search, GitGraph, Undo2 } from 'lucide-react'
 import { format, parseISO, startOfWeek, endOfWeek } from 'date-fns'
 import DatePicker from './DatePicker'
 import TaskGraph from './TaskGraph'
 
 const API_URL = 'http://localhost:5000/api'
+
+// Format a Date as a local YYYY-MM-DD string (avoids UTC off-by-one from toISOString)
+const toLocalYMD = (d) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 
 // Utility function to convert URLs in text to clickable links
 const linkifyText = (text) => {
@@ -100,6 +104,8 @@ function TodoItem({ todo, level = 0, onUpdate, onDelete, onAddChild, onMove, onR
       setCollapsed(false)
     }
   }, [expandedTaskIds, todo.id, todo.title])
+  const [poofing, setPoofing] = useState(false)
+  const [dropIndicator, setDropIndicator] = useState(null) // 'before' | 'after' | 'into'
   const [showAddChild, setShowAddChild] = useState(false)
   const [newChildForm, setNewChildForm] = useState({ title: '', description: '', due_date: '', color: 'gray' })
   const [showComments, setShowComments] = useState(false)
@@ -139,7 +145,15 @@ function TodoItem({ todo, level = 0, onUpdate, onDelete, onAddChild, onMove, onR
   }
 
   const toggleCompleted = () => {
-    onUpdate(todo.id, { completed: !todo.completed })
+    if (!todo.completed) {
+      if (!window.confirm('Mark this task as done?')) return
+      setPoofing(true)
+      setTimeout(() => {
+        onUpdate(todo.id, { completed: true })
+      }, 600)
+    } else {
+      onUpdate(todo.id, { completed: false })
+    }
   }
 
   const toggleForWeek = () => {
@@ -216,13 +230,41 @@ function TodoItem({ todo, level = 0, onUpdate, onDelete, onAddChild, onMove, onR
     e.dataTransfer.dropEffect = 'move'
   }
 
+  const getDropZone = (e) => {
+    const rect = e.currentTarget.getBoundingClientRect()
+    const ratio = (e.clientY - rect.top) / rect.height
+    if (ratio < 0.3) return 'before'
+    if (ratio > 0.7) return 'after'
+    return 'into'
+  }
+
+  const handleCardDragOver = (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    e.dataTransfer.dropEffect = 'move'
+    setDropIndicator(getDropZone(e))
+  }
+
+  const handleCardDragLeave = (e) => {
+    e.stopPropagation()
+    setDropIndicator(null)
+  }
+
   const handleDrop = async (e) => {
     e.preventDefault()
     e.stopPropagation()
     document.body.classList.remove('dragging')
+    const zone = getDropZone(e)
+    setDropIndicator(null)
     const draggedId = parseInt(e.dataTransfer.getData('text/plain'))
     if (draggedId !== todo.id) {
-      await onMove(draggedId, todo.id, false, true)
+      if (zone === 'before') {
+        await onMove(draggedId, todo.id, false, false)
+      } else if (zone === 'after') {
+        await onMove(draggedId, todo.id, true, false)
+      } else {
+        await onMove(draggedId, todo.id, false, true)
+      }
     }
   }
 
@@ -347,7 +389,26 @@ function TodoItem({ todo, level = 0, onUpdate, onDelete, onAddChild, onMove, onR
   const hasChildren = todo.children && todo.children.length > 0
 
   return (
-    <div className={`${level > 0 ? 'ml-8 mt-2' : ''}`}>
+    <div className={`relative ${level > 0 ? 'ml-8 mt-2' : ''}`}>
+      {poofing && (
+        <div className="poof-cloud">
+          {[0, 45, 90, 135, 180, 225, 270, 315].map((angle) => {
+            const rad = (angle * Math.PI) / 180
+            const dist = 70
+            return (
+              <span
+                key={angle}
+                className="poof-puff"
+                style={{
+                  '--tx': `${Math.cos(rad) * dist}px`,
+                  '--ty': `${Math.sin(rad) * dist}px`,
+                }}
+              />
+            )
+          })}
+          <span className="poof-puff" style={{ '--tx': '0px', '--ty': '0px', width: '64px', height: '64px' }} />
+        </div>
+      )}
       {todo.parentPath && (
         <div className={`text-xs mb-1 flex items-center gap-1 flex-wrap ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
           <span>📁</span>
@@ -372,7 +433,15 @@ function TodoItem({ todo, level = 0, onUpdate, onDelete, onAddChild, onMove, onR
       <div
         id={`todo-${todo.id}`}
         className={`rounded-lg shadow-sm p-3 transition-all hover:shadow-md cursor-move border-l-4 ${
+          poofing ? 'poof-animate' : ''
+        } ${
           todo.completed ? 'opacity-60' : ''
+        } ${
+          dropIndicator === 'into' ? 'ring-2 ring-blue-400' : ''
+        } ${
+          dropIndicator === 'before' ? 'border-t-4 border-t-blue-400' : ''
+        } ${
+          dropIndicator === 'after' ? 'border-b-4 border-b-blue-400' : ''
         } ${
           focusedTodoId === todo.id || todo.focused
             ? (darkMode ? 'bg-green-900 border-2 border-green-500' : 'bg-green-50 border-2 border-green-500')
@@ -382,7 +451,8 @@ function TodoItem({ todo, level = 0, onUpdate, onDelete, onAddChild, onMove, onR
         }`}
         draggable={editingId !== todo.id && !expanded}
         onDragStart={handleDragStart}
-        onDragOver={handleDragOver}
+        onDragOver={handleCardDragOver}
+        onDragLeave={handleCardDragLeave}
         onDrop={handleDrop}
       >
         {editingId === todo.id ? (
@@ -688,12 +758,14 @@ function TodoItem({ todo, level = 0, onUpdate, onDelete, onAddChild, onMove, onR
                                     <button
                                       onClick={(e) => {
                                         e.stopPropagation()
-                                        deleteComment(comment.id)
+                                        if (window.confirm('Delete this comment? You can undo this with ⌘/Ctrl+Z.')) {
+                                          deleteComment(comment.id)
+                                        }
                                       }}
                                       className="text-gray-400 hover:text-red-600 transition-colors"
                                       title="Delete comment"
                                     >
-                                      <X size={12} />
+                                      <Trash2 size={12} />
                                     </button>
                                   </div>
                                 </div>
@@ -829,14 +901,14 @@ function TodoItem({ todo, level = 0, onUpdate, onDelete, onAddChild, onMove, onR
                   e.stopPropagation()
                   toggleForToday()
                 }}
-                className={`p-1.5 rounded transition-colors ${
+                className={`px-2 py-1 rounded transition-colors font-semibold text-sm ${
                   todo.is_for_today
                     ? 'bg-blue-100 text-blue-600 hover:bg-blue-200'
                     : 'text-gray-400 hover:bg-gray-100'
                 }`}
                 title={todo.is_for_today ? 'Remove from today' : 'Mark for today'}
               >
-                <Calendar size={16} fill={todo.is_for_today ? 'currentColor' : 'none'} />
+                D
               </button>
               <button
                 onClick={(e) => {
@@ -1051,8 +1123,9 @@ function App() {
   const [workedEndDate, setWorkedEndDate] = useState('')
   const [showHelp, setShowHelp] = useState(false)
   const [showGraph, setShowGraph] = useState(false)
-  const [darkMode, setDarkMode] = useState(false)
+  const [darkMode, setDarkMode] = useState(true)
   const [searchText, setSearchText] = useState('')
+  const [undoCount, setUndoCount] = useState(0)
 
   useEffect(() => {
     fetchTodos()
@@ -1063,10 +1136,47 @@ function App() {
       const response = await fetch(`${API_URL}/todos`)
       const data = await response.json()
       setTodos(data)
+      fetchUndoCount()
     } catch (error) {
       console.error('Error fetching todos:', error)
     }
   }
+
+  const fetchUndoCount = async () => {
+    try {
+      const response = await fetch(`${API_URL}/undo/count`)
+      const data = await response.json()
+      setUndoCount(data.count)
+    } catch (error) {
+      console.error('Error fetching undo count:', error)
+    }
+  }
+
+  const handleUndo = async () => {
+    try {
+      const response = await fetch(`${API_URL}/undo`, { method: 'POST' })
+      if (response.ok) {
+        await fetchTodos()
+      }
+    } catch (error) {
+      console.error('Error undoing:', error)
+    }
+  }
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) {
+        const tag = e.target.tagName
+        const isEditable = tag === 'INPUT' || tag === 'TEXTAREA' || e.target.isContentEditable
+        if (!isEditable) {
+          e.preventDefault()
+          handleUndo()
+        }
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
 
   // Helper function to count all tasks including subtasks recursively
   const countAllTasks = (tasks) => {
@@ -1135,13 +1245,14 @@ function App() {
 
   const filterCounts = getFilterCounts()
 
-  // Search function: finds tasks matching title or comments, flattened with parent breadcrumbs
+  // Search function: finds tasks matching title, description, or comments, flattened with parent breadcrumbs
   const searchTodos = (todoList, query) => {
     if (!query.trim()) return todoList
     const lowerQuery = query.toLowerCase()
     
     const matchesTodo = (todo) => {
       if (todo.title && todo.title.toLowerCase().includes(lowerQuery)) return true
+      if (todo.description && todo.description.toLowerCase().includes(lowerQuery)) return true
       if (todo.comments && todo.comments.some(c => c.text && c.text.toLowerCase().includes(lowerQuery))) return true
       return false
     }
@@ -1353,11 +1464,14 @@ function App() {
       if (filterType === 'worked_range') {
         // Check if task has any work sessions in custom date range
         if (!todo.work_sessions || todo.work_sessions.length === 0) return false
-        const start = new Date(workedStartDate)
-        const end = new Date(workedEndDate)
-        end.setHours(23, 59, 59, 999)
+        // Parse dates as local time, not UTC
+        const [sYear, sMonth, sDay] = workedStartDate.split('-').map(Number)
+        const [eYear, eMonth, eDay] = workedEndDate.split('-').map(Number)
+        const start = new Date(sYear, sMonth - 1, sDay, 0, 0, 0, 0)
+        const end = new Date(eYear, eMonth - 1, eDay, 23, 59, 59, 999)
         return todo.work_sessions.some(session => {
-          const sessionDate = new Date(session.work_date)
+          const [year, month, day] = session.work_date.split('-').map(Number)
+          const sessionDate = new Date(year, month - 1, day)
           return sessionDate >= start && sessionDate <= end
         })
       }
@@ -1690,6 +1804,17 @@ function App() {
               <Database size={20} />
               Backup
             </button>
+            <button
+              onClick={handleUndo}
+              disabled={undoCount === 0}
+              className={`px-4 py-2 rounded-lg transition-colors flex items-center gap-2 bg-amber-500 text-white hover:bg-amber-600 ${
+                undoCount === 0 ? 'opacity-40 cursor-not-allowed' : ''
+              }`}
+              title={undoCount === 0 ? 'Nothing to undo' : `Undo last action (⌘/Ctrl+Z) — ${undoCount} available`}
+            >
+              <Undo2 size={20} />
+              Undo
+            </button>
           </div>
         </div>
 
@@ -1782,7 +1907,7 @@ function App() {
               type="text"
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
-              placeholder="Search tasks and comments..."
+              placeholder="Search tasks, descriptions, and comments..."
               className={`w-full pl-10 pr-10 py-2 rounded-lg border outline-none transition-colors ${
                 darkMode
                   ? 'bg-gray-700 border-gray-600 text-gray-100 placeholder-gray-400 focus:border-blue-500'
@@ -2122,7 +2247,7 @@ function App() {
                   <h3 className="text-xl font-semibold text-gray-800 mb-3">📋 Basic Task Management</h3>
                   <ul className="space-y-2 ml-4">
                     <li><strong>Add Task:</strong> Click "Add new task..." button, fill in title, description (optional), due date (optional), and color</li>
-                    <li><strong>Complete Task:</strong> Click the checkbox to mark as complete (☑)</li>
+                    <li><strong>Complete Task:</strong> Click the checkbox to mark as complete — confirms first, then plays a "poof" animation</li>
                     <li><strong>Uncomplete Task:</strong> Click the green checkbox (☑) on completed tasks to restore them to active</li>
                     <li><strong>Edit Task:</strong> Click the pencil icon (✏️) to edit title, description, due date, and color</li>
                     <li><strong>Delete Task:</strong> Click the trash icon (🗑️) to delete (also deletes all subtasks)</li>
@@ -2158,7 +2283,7 @@ function App() {
                   <h3 className="text-xl font-semibold text-gray-800 mb-3">🏷️ Task Properties</h3>
                   <ul className="space-y-2 ml-4">
                     <li><strong>W This Week:</strong> Mark tasks for this week (purple "W" button)</li>
-                    <li><strong>📅 Today:</strong> Mark tasks for today (blue calendar icon)</li>
+                    <li><strong>D Today:</strong> Mark tasks for today (blue "D" button)</li>
                     <li><strong>� Focus:</strong> Click to mark you're working on it today (green target icon, stays green)</li>
                     <li><strong>🔴 Important:</strong> Flag critical tasks (red alert icon)</li>
                     <li><strong>� Color:</strong> Assign colors to categorize tasks (colored dot next to title)</li>
@@ -2184,7 +2309,7 @@ function App() {
                 <section>
                   <h3 className="text-xl font-semibold text-gray-800 mb-3">🔍 Search, Filters & Views</h3>
                   <ul className="space-y-2 ml-4">
-                    <li><strong>Text Search:</strong> Type in the search bar to find tasks by title or comment content. Results are shown as a flat list with parent breadcrumbs. Click a breadcrumb to navigate to the parent task.</li>
+                    <li><strong>Text Search:</strong> Type in the search bar to find tasks by title, description, or comment content. Results are shown as a flat list with parent breadcrumbs. Click a breadcrumb to navigate to the parent task.</li>
                     <li><strong>All:</strong> Shows all incomplete tasks with full hierarchy</li>
                     <li><strong>This Week:</strong> Shows tasks marked for this week, Monday to Sunday (flat list with parent breadcrumbs)</li>
                     <li><strong>Today:</strong> Shows tasks marked for today OR tasks due today/overdue (flat list)</li>
@@ -2233,6 +2358,17 @@ function App() {
                 </section>
 
                 <section>
+                  <h3 className="text-xl font-semibold text-gray-800 mb-3">↩️ Undo</h3>
+                  <ul className="space-y-2 ml-4">
+                    <li><strong>Undo Button:</strong> Click the undo arrow in the top-right to revert your last action</li>
+                    <li><strong>Keyboard Shortcut:</strong> Press <code className="bg-gray-100 px-1 rounded">⌘/Ctrl+Z</code> (when not typing in a text field) to undo</li>
+                    <li><strong>Works for Everything:</strong> Undo covers creating, editing, completing, deleting, moving tasks, flags, colors, and all comment actions</li>
+                    <li><strong>Multiple Steps:</strong> Undo repeatedly to step back through recent changes (up to 50)</li>
+                    <li><strong>Note:</strong> Deleted file attachments cannot be restored, and undo history resets if the server restarts</li>
+                  </ul>
+                </section>
+
+                <section>
                   <h3 className="text-xl font-semibold text-gray-800 mb-3">🌙 Appearance</h3>
                   <ul className="space-y-2 ml-4">
                     <li><strong>Dark Mode:</strong> Click moon/sun icon in top-right to toggle dark mode</li>
@@ -2246,7 +2382,7 @@ function App() {
                   <ul className="space-y-2 ml-4">
                     <li>Hover over any button to see what it does</li>
                     <li>Use Focus (🎯) to track tasks you work on - click again to undo, then view with "Worked On" filter</li>
-                    <li>Mark tasks for "Today" (📅) for immediate focus, "This Week" (W) for weekly planning</li>
+                    <li>Mark tasks for "Today" (D) for immediate focus, "This Week" (W) for weekly planning</li>
                     <li>Use colors consistently for better organization (e.g., Red = urgent, Blue = work)</li>
                     <li>The colored dot next to task titles makes it easy to see categories at a glance</li>
                     <li>Use subtasks to break down complex tasks into manageable steps</li>
@@ -2266,7 +2402,7 @@ function App() {
                         <li>○/✓ - Complete/Incomplete</li>
                         <li>✏️ - Edit</li>
                         <li>W - This Week (Purple)</li>
-                        <li>📅 - Today (Blue)</li>
+                        <li>D - Today (Blue)</li>
                         <li>🎯 - Focus (Green)</li>
                         <li>🔴 - Important (Red)</li>
                         <li>🎨 - Color Dot</li>
@@ -2310,8 +2446,7 @@ function App() {
                     onClick={(e) => {
                       e.stopPropagation()
                       const today = new Date()
-                      const localDate = new Date(today.getFullYear(), today.getMonth(), today.getDate())
-                      const dateStr = localDate.toISOString().split('T')[0]
+                      const dateStr = toLocalYMD(today)
                       // Set dates first, then filter in next render cycle
                       setCompletedStartDate(dateStr)
                       setCompletedEndDate(dateStr)
@@ -2330,8 +2465,8 @@ function App() {
                       const today = new Date()
                       const weekStart = startOfWeek(today, { weekStartsOn: 1 })
                       const weekEnd = endOfWeek(today, { weekStartsOn: 1 })
-                      setCompletedStartDate(weekStart.toISOString().split('T')[0])
-                      setCompletedEndDate(weekEnd.toISOString().split('T')[0])
+                      setCompletedStartDate(toLocalYMD(weekStart))
+                      setCompletedEndDate(toLocalYMD(weekEnd))
                       setShowCompletedPeriod(false)
                       setTimeout(() => setFilter('completed'), 10)
                     }}

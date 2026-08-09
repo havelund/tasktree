@@ -19,13 +19,14 @@ This todo list application offers two features together that I was not able to f
 
 ### 📋 Core Task Management
 - **Hierarchical Tasks** - Unlimited nesting with parent-child relationships
-- **Drag & Drop** - Reorder tasks within the same level, move between parents, or drop onto a task to make it a subtask
+- **Drag & Drop** - Position-aware: drop on the top/bottom third of a task to reorder before/after it, or the middle third to make it a subtask (a live indicator shows what will happen)
+- **Complete with Confirmation** - Clicking the checkbox asks "Mark this task as done?" then plays a "poof" animation
 - **Quick Actions** - Complete, edit, delete, and add subtasks
 - **Auto-Hide Completed** - Keep your lists clean and focused
 - **Square Checkboxes** - Familiar checkbox-style task completion
 
 ### 🏷️ Task Organization
-- **Today Flag** (📅) - Mark tasks for immediate focus
+- **Today Flag** (D) - Mark tasks for immediate focus
 - **This Week Flag** (W) - Weekly planning and organization
 - **Important Flag** (🔴) - Highlight critical tasks
 - **Focus Tracking** (🎯) - Track which tasks you're actively working on
@@ -34,7 +35,7 @@ This todo list application offers two features together that I was not able to f
 - **Due Dates** - Set deadlines and track overdue tasks
 
 ### 🔍 Smart Filtering & Search
-- **Text Search** - Search tasks by title or comment content, results shown as flat list with parent breadcrumbs
+- **Text Search** - Search tasks by title, description, or comment content, results shown as flat list with parent breadcrumbs
 - **All** - View complete hierarchy
 - **This Week** - Tasks marked for the week (Monday to Sunday)
 - **Today** - Tasks marked for today OR due today/overdue
@@ -67,8 +68,15 @@ This todo list application offers two features together that I was not able to f
 - **Layout Toggle** - Switch between horizontal (left-to-right) and vertical (top-down) layouts
 - **Dark Mode Support** - Graph adapts to your theme
 
+### ↩️ Undo
+- **General Undo** - Revert your last action across the entire app (create, edit, complete, delete, move, flags, colors, comments)
+- **Undo Button** - One-click undo in the header, disabled when there's nothing to undo
+- **Keyboard Shortcut** - `⌘/Ctrl+Z` (outside text fields) to undo
+- **Multi-Step** - Step back through up to 50 recent changes
+- **Note** - Deleted file attachments are not restored; undo history resets on server restart
+
 ### 🌙 User Experience
-- **Dark Mode** - Easy on the eyes
+- **Dark Mode** - Easy on the eyes (default theme)
 - **Responsive Design** - Works on all screen sizes
 - **Keyboard Friendly** - Efficient workflows
 - **Tooltips** - Helpful hints on every button
@@ -174,6 +182,8 @@ todo/
 - `POST /api/todos/:id/comments` - Add comment
 - `PATCH /api/comments/:id` - Update comment
 - `DELETE /api/comments/:id` - Delete comment
+- `POST /api/undo` - Undo the last mutating action
+- `GET /api/undo/count` - Number of undo steps available
 
 ## Tips & Best Practices
 
@@ -187,6 +197,7 @@ todo/
 
 ## Keyboard Shortcuts
 
+- `⌘/Ctrl+Z` - Undo last action (when not typing in a text field)
 - Click task title to expand/collapse
 - Drag tasks to reorder
 - Click icons for quick actions
