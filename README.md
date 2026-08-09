@@ -159,18 +159,25 @@ todo/
 ## Technology Stack
 
 ### Backend
-- **Flask** - Python web framework
-- **SQLAlchemy** - ORM for database management
-- **SQLite** - Lightweight database
+- **Python 3 / Flask** - REST API
 - **Flask-CORS** - Cross-origin resource sharing
+- **SQLAlchemy** ORM over **SQLite** (`todos.db`)
+- **Werkzeug** - File upload handling (attachments, 16MB limit)
 
 ### Frontend
-- **React** - UI framework
-- **Vite** - Build tool and dev server
-- **TailwindCSS** - Utility-first CSS
-- **Lucide React** - Icon library
+- **React 18** + **Vite 5** - SPA framework and dev/build tooling
+- **Tailwind CSS 3** (PostCSS, Autoprefixer) - styling
+- **lucide-react** - Icon library
 - **date-fns** - Date manipulation
-- **@viz-js/viz** - Graphviz rendering for task graph
+- **react-datepicker** - Date picker
+- **@viz-js/viz** - Graphviz rendering for the Task Graph
+
+### Tooling & Ops
+- **Bash scripts** - `start.sh`, `stop.sh`, `backup_db.sh`, `reset_db.sh`
+- **Python migration scripts** - `migrate_*.py`
+
+### Architecture
+- React SPA ↔ Flask REST API (`http://localhost:5000/api`) over JSON; SQLite database; local `uploads/` folder for attachments.
 
 ## API Endpoints
 
