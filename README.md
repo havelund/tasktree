@@ -209,9 +209,11 @@ todo/
 - Drag tasks to reorder
 - Click icons for quick actions
 
-## Author
+## Contributing
 
-**Klaus Havelund** (klaus.havelund@jpl.nasa.gov)
+**Author:** Klaus Havelund (klaus.havelund@jpl.nasa.gov)
+
+This project is **100% vibe coded** — it was built entirely through AI-assisted development, with the author guiding the design and features conversationally rather than writing the code by hand.
 
 This is a personal project.
 
