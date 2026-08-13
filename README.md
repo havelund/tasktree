@@ -19,7 +19,7 @@ This todo list application offers two features together that I was not able to f
 
 ### 📋 Core Task Management
 - **Hierarchical Tasks** - Unlimited nesting with parent-child relationships
-- **Drag & Drop** - Position-aware: drop on the top/bottom third of a task to reorder before/after it, or the middle third to make it a subtask (a live indicator shows what will happen)
+- **Drag & Drop** - Drop *onto* a task to nest it as a subtask (blue highlight shows the target), drop on a task's thin top edge to reorder before it, and use the "move to end" zone to send it to the bottom of a list. Collapsed parents **spring-load** open on hover, and the window **auto-scrolls** when you drag near its edges.
 - **Complete with Confirmation** - Clicking the checkbox asks "Mark this task as done?" then plays a "poof" animation
 - **Quick Actions** - Complete, edit, delete, and add subtasks
 - **Auto-Hide Completed** - Keep your lists clean and focused
@@ -206,7 +206,7 @@ todo/
 
 - `⌘/Ctrl+Z` - Undo last action (when not typing in a text field)
 - Click task title to expand/collapse
-- Drag tasks to reorder
+- Drop a task onto another to nest it; drop on a task's top edge to reorder before it
 - Click icons for quick actions
 
 ## Contributing

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Plus, Calendar, CheckCircle2, Circle, Square, CheckSquare, Star, Trash2, Edit2, Save, X, Paperclip, FileText, ChevronDown, ChevronRight, MessageSquare, AlertCircle, Focus, Download, BarChart3, HelpCircle, Moon, Sun, CalendarDays, Database, Search, GitGraph, Undo2 } from 'lucide-react'
 import { format, parseISO, startOfWeek, endOfWeek } from 'date-fns'
 import DatePicker from './DatePicker'
@@ -106,6 +106,28 @@ function TodoItem({ todo, level = 0, onUpdate, onDelete, onAddChild, onMove, onR
   }, [expandedTaskIds, todo.id, todo.title])
   const [poofing, setPoofing] = useState(false)
   const [dropIndicator, setDropIndicator] = useState(null) // 'before' | 'after' | 'into'
+  const springTimer = useRef(null) // spring-loaded expand while dragging over a collapsed parent
+
+  const cancelSpring = () => {
+    if (springTimer.current !== null) {
+      clearTimeout(springTimer.current)
+      springTimer.current = null
+    }
+  }
+
+  // Clear this card's drop indicator/spring timer whenever any drag ends (covers Esc-cancel)
+  useEffect(() => {
+    const clear = () => {
+      setDropIndicator(null)
+      cancelSpring()
+    }
+    window.addEventListener('dragend', clear, true)
+    window.addEventListener('drop', clear, true)
+    return () => {
+      window.removeEventListener('dragend', clear, true)
+      window.removeEventListener('drop', clear, true)
+    }
+  }, [])
   const [showAddChild, setShowAddChild] = useState(false)
   const [newChildForm, setNewChildForm] = useState({ title: '', description: '', due_date: '', color: 'gray' })
   const [showComments, setShowComments] = useState(false)
@@ -233,8 +255,10 @@ function TodoItem({ todo, level = 0, onUpdate, onDelete, onAddChild, onMove, onR
   const getDropZone = (e) => {
     const rect = e.currentTarget.getBoundingClientRect()
     const ratio = (e.clientY - rect.top) / rect.height
-    if (ratio < 0.3) return 'before'
-    if (ratio > 0.7) return 'after'
+    // Dropping on a card nests INTO it. Only the thin top 15% strip reorders
+    // the task BEFORE this one. There is intentionally no card "after" zone so
+    // a drop on a card can never slip underneath it as a sibling.
+    if (ratio < 0.15) return 'before'
     return 'into'
   }
 
@@ -243,11 +267,22 @@ function TodoItem({ todo, level = 0, onUpdate, onDelete, onAddChild, onMove, onR
     e.stopPropagation()
     e.dataTransfer.dropEffect = 'move'
     setDropIndicator(getDropZone(e))
+
+    // Spring-load: if this is a collapsed parent, expand it after a short hover
+    // so the user can drop the dragged task onto one of its subtasks.
+    const isCollapsedParent = todo.children && todo.children.length > 0 && collapsed
+    if (isCollapsedParent && springTimer.current === null) {
+      springTimer.current = setTimeout(() => {
+        setCollapsed(false)
+        springTimer.current = null
+      }, 600)
+    }
   }
 
   const handleCardDragLeave = (e) => {
     e.stopPropagation()
     setDropIndicator(null)
+    cancelSpring()
   }
 
   const handleDrop = async (e) => {
@@ -265,16 +300,6 @@ function TodoItem({ todo, level = 0, onUpdate, onDelete, onAddChild, onMove, onR
       } else {
         await onMove(draggedId, todo.id, false, true)
       }
-    }
-  }
-
-  const handleDropAfter = async (e) => {
-    e.preventDefault()
-    e.stopPropagation()
-    document.body.classList.remove('dragging')
-    const draggedId = parseInt(e.dataTransfer.getData('text/plain'))
-    if (draggedId !== todo.id) {
-      await onMove(draggedId, todo.id, true)
     }
   }
 
@@ -437,7 +462,7 @@ function TodoItem({ todo, level = 0, onUpdate, onDelete, onAddChild, onMove, onR
         } ${
           todo.completed ? 'opacity-60' : ''
         } ${
-          dropIndicator === 'into' ? 'ring-2 ring-blue-400' : ''
+          dropIndicator === 'into' ? 'ring-2 ring-blue-400 ring-offset-2 ring-offset-transparent bg-blue-500/10' : ''
         } ${
           dropIndicator === 'before' ? 'border-t-4 border-t-blue-400' : ''
         } ${
@@ -449,7 +474,7 @@ function TodoItem({ todo, level = 0, onUpdate, onDelete, onAddChild, onMove, onR
         } ${
           COLORS.find(c => c.name === (todo.color || 'gray'))?.border || 'border-gray-400'
         }`}
-        draggable={editingId !== todo.id && !expanded}
+        draggable={editingId !== todo.id}
         onDragStart={handleDragStart}
         onDragOver={handleCardDragOver}
         onDragLeave={handleCardDragLeave}
@@ -952,11 +977,7 @@ function TodoItem({ todo, level = 0, onUpdate, onDelete, onAddChild, onMove, onR
         )}
       </div>
 
-      <div 
-        className="h-2 -mt-1 -mb-1"
-        onDragOver={handleDragOver}
-        onDrop={handleDropAfter}
-      />
+      <div className="h-2 -mt-1 -mb-1" />
 
       {showComments && (
         <form onSubmit={addComment} className="mt-2 bg-indigo-50 rounded-lg p-3 flex gap-2">
@@ -1129,6 +1150,65 @@ function App() {
 
   useEffect(() => {
     fetchTodos()
+  }, [])
+
+  // Auto-scroll the window when dragging a task near the top/bottom edge
+  useEffect(() => {
+    const EDGE = 90        // px from top/bottom that triggers scrolling
+    const MAX_SPEED = 20   // px per frame at the very edge
+    let velocity = 0
+    let rafId = null
+
+    const step = () => {
+      if (velocity !== 0) {
+        window.scrollBy(0, velocity)
+        rafId = requestAnimationFrame(step)
+      } else {
+        rafId = null
+      }
+    }
+
+    const onDragOver = (e) => {
+      const y = e.clientY
+      const h = window.innerHeight
+      if (y < EDGE) {
+        velocity = -Math.ceil(MAX_SPEED * (EDGE - y) / EDGE)
+      } else if (y > h - EDGE) {
+        velocity = Math.ceil(MAX_SPEED * (y - (h - EDGE)) / EDGE)
+      } else {
+        velocity = 0
+      }
+      if (rafId === null && velocity !== 0) {
+        rafId = requestAnimationFrame(step)
+      }
+    }
+
+    const stop = () => {
+      velocity = 0
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId)
+        rafId = null
+      }
+    }
+
+    // Fires on ANY drag end (drop, dragend, or Esc-cancel). Stops auto-scroll
+    // and clears the global dragging state so drop zones don't stay visible.
+    const endDrag = () => {
+      stop()
+      document.body.classList.remove('dragging')
+    }
+
+    // Use capture phase: cards call stopPropagation(), which would otherwise
+    // prevent these bubble-phase listeners on window from ever firing.
+    window.addEventListener('dragover', onDragOver, true)
+    window.addEventListener('drop', endDrag, true)
+    window.addEventListener('dragend', endDrag, true)
+    return () => {
+      window.removeEventListener('dragover', onDragOver, true)
+      window.removeEventListener('drop', endDrag, true)
+      window.removeEventListener('dragend', endDrag, true)
+      endDrag()
+    }
   }, [])
 
   const fetchTodos = async () => {
@@ -2261,8 +2341,11 @@ function App() {
                   <ul className="space-y-2 ml-4">
                     <li><strong>Add Subtask:</strong> Click the plus icon (➕) on any task to add a subtask underneath</li>
                     <li><strong>Unlimited Nesting:</strong> Subtasks can have their own subtasks, creating deep hierarchies</li>
-                    <li><strong>Drag & Drop:</strong> Click and drag tasks to reorder, move between parents, or drop onto a task to make it a subtask</li>
-                    <li><strong>Drop Zones:</strong> Drop in gaps between tasks to reorder, or drop directly on a task to move into it as a child</li>
+                    <li><strong>Drag & Drop:</strong> Drag a task and drop it <em>onto</em> another task to make it a subtask (a blue highlight shows the nest target)</li>
+                    <li><strong>Reorder Before:</strong> Drop on the thin top edge of a task to place the dragged task just before it (shown by a blue line on top)</li>
+                    <li><strong>Reorder to End:</strong> Drop on the “Drop here to move to end” zone that appears at the bottom of a list while dragging</li>
+                    <li><strong>Spring-Load Folders:</strong> Hover over a collapsed parent for a moment while dragging and it auto-expands so you can drop into its subtasks</li>
+                    <li><strong>Auto-Scroll:</strong> Drag near the top or bottom of the window to scroll toward off-screen tasks</li>
                   </ul>
                 </section>
 
