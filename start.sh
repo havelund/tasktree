@@ -12,17 +12,41 @@ case "$(uname -s)" in
   *) OS=other ;;
 esac
 
-# Find a working Python 3 (on Windows "python3" may be a Microsoft Store stub)
+# Find a Python 3.8+ (on Windows "python3" may be a Microsoft Store stub;
+# on older Linux the default python3 may be too old, so also try versioned names)
+# Prefer one that already has the required packages installed.
 PYTHON=()
-for candidate in "python3" "python" "py -3"; do
+PYTHON_NO_DEPS=()
+for candidate in "python3" "python" "py -3" python3.13 python3.12 python3.11 python3.10 python3.9 python3.8; do
   # shellcheck disable=SC2086
-  if $candidate -c 'import sys; sys.exit(0 if sys.version_info[0] == 3 else 1)' >/dev/null 2>&1; then
+  $candidate -c 'import sys; sys.exit(0 if sys.version_info >= (3, 8) else 1)' >/dev/null 2>&1 || continue
+  # shellcheck disable=SC2086
+  if $candidate -c 'import flask, flask_cors, sqlalchemy' >/dev/null 2>&1; then
     read -r -a PYTHON <<< "$candidate"
     break
   fi
+  [ ${#PYTHON_NO_DEPS[@]} -eq 0 ] && read -r -a PYTHON_NO_DEPS <<< "$candidate"
 done
 if [ ${#PYTHON[@]} -eq 0 ]; then
-  echo "❌ Could not find Python 3 (tried python3, python, py). Please install Python 3 and try again."
+  if [ ${#PYTHON_NO_DEPS[@]} -gt 0 ]; then
+    echo "❌ Python packages are missing. Run:  ${PYTHON_NO_DEPS[*]} -m pip install -r requirements.txt"
+  else
+    echo "❌ Python 3.8 or newer is required but was not found."
+    echo "   Found: $(python3 --version 2>&1 || python --version 2>&1 || echo none)"
+  fi
+  exit 1
+fi
+
+# Check Node.js 18+ (required by Vite 5)
+NODE_VERSION=$(node -v 2>/dev/null)
+NODE_MAJOR=${NODE_VERSION#v}
+NODE_MAJOR=${NODE_MAJOR%%.*}
+if [ -z "$NODE_VERSION" ] || [ "$NODE_MAJOR" -lt 18 ] 2>/dev/null; then
+  echo "❌ Node.js 18 or newer is required. Found: ${NODE_VERSION:-none}"
+  exit 1
+fi
+if [ ! -d node_modules ]; then
+  echo "❌ Frontend packages are missing. Run:  npm install"
   exit 1
 fi
 

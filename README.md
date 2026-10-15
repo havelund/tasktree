@@ -85,8 +85,10 @@ This todo list application offers two features together that I was not able to f
 
 ### Prerequisites
 - Python 3.8+
-- Node.js 16+
+- Node.js 18+
 - npm or yarn
+
+Check with `python3 --version` (Windows: `python --version`) and `node -v`. Older Linux distributions (e.g. RHEL 8/9) ship older versions by default and need upgrading.
 
 ### Installation
 
