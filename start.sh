@@ -55,6 +55,22 @@ for _ in $(seq 1 60); do
   kill -0 $FRONTEND_PID 2>/dev/null || break
   sleep 0.5
 done
+
+# If a server crashed on startup, show its log instead of pretending all is well
+show_crash() {
+  echo ""
+  echo "❌ The $1 server failed to start. Last lines of $2:"
+  echo "----------------------------------------------------------"
+  tail -n 25 "$2"
+  echo "----------------------------------------------------------"
+}
+FAILED=0
+kill -0 $FRONTEND_PID 2>/dev/null || { show_crash frontend frontend.log; FAILED=1; }
+kill -0 $BACKEND_PID 2>/dev/null || { show_crash backend backend.log; FAILED=1; }
+if [ $FAILED -eq 1 ]; then
+  cleanup
+fi
+
 if [ -z "$APP_URL" ]; then
   APP_URL="http://localhost:5173"
   echo "⚠️  Could not detect the frontend address (see frontend.log); assuming $APP_URL"
