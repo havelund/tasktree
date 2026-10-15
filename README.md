@@ -112,9 +112,13 @@ npm install
 ./start.sh
 ```
 
-The application will be available at: http://localhost:5173
+This starts the backend and frontend servers and asks whether to open TaskTree in your browser. Press Enter (or wait 15 seconds) and it opens automatically in your default browser — on macOS, in a fresh window. If the browser does not open, go to http://localhost:5173 manually.
+
+Works on macOS, Linux, and Windows. **Windows:** run `./start.sh` and `./stop.sh` from **Git Bash** (installed with [Git for Windows](https://gitforwindows.org)) or WSL — they will not run in Command Prompt or PowerShell.
 
 ### Stopping the Application
+
+Press `Ctrl+C` in the terminal running `start.sh`, or run:
 
 ```bash
 ./stop.sh

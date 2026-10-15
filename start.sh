@@ -1,19 +1,64 @@
 #!/bin/bash
 
+cd "$(dirname "$0")" || exit 1
+
+# Detect platform: mac, linux, wsl, or windows (Git Bash / MSYS / Cygwin)
+case "$(uname -s)" in
+  Darwin) OS=mac ;;
+  MINGW*|MSYS*|CYGWIN*) OS=windows ;;
+  Linux)
+    if grep -qi microsoft /proc/version 2>/dev/null; then OS=wsl; else OS=linux; fi
+    ;;
+  *) OS=other ;;
+esac
+
+# Find a working Python 3 (on Windows "python3" may be a Microsoft Store stub)
+PYTHON=()
+for candidate in "python3" "python" "py -3"; do
+  # shellcheck disable=SC2086
+  if $candidate -c 'import sys; sys.exit(0 if sys.version_info[0] == 3 else 1)' >/dev/null 2>&1; then
+    read -r -a PYTHON <<< "$candidate"
+    break
+  fi
+done
+if [ ${#PYTHON[@]} -eq 0 ]; then
+  echo "❌ Could not find Python 3 (tried python3, python, py). Please install Python 3 and try again."
+  exit 1
+fi
+
 echo "Starting Todo App..."
 echo ""
 
 echo "Starting backend server..."
-python3 app.py > backend.log 2>&1 &
+"${PYTHON[@]}" app.py > backend.log 2>&1 &
 BACKEND_PID=$!
 
 echo "Starting frontend server..."
 npm run dev > frontend.log 2>&1 &
 FRONTEND_PID=$!
 
-trap "kill $BACKEND_PID $FRONTEND_PID 2>/dev/null; exit" INT TERM
+cleanup() {
+  kill $BACKEND_PID $FRONTEND_PID 2>/dev/null
+  # On Windows, killing the bash jobs does not stop the native python/node processes
+  if [ "$OS" = windows ]; then
+    ./stop.sh >/dev/null 2>&1
+  fi
+  exit
+}
+trap cleanup INT TERM
 
-APP_URL="http://localhost:5173"
+# Wait for Vite to report its actual URL (it picks another port if 5173 is busy)
+APP_URL=""
+for _ in $(seq 1 60); do
+  APP_URL=$(sed "s/$(printf '\033')\[[0-9;]*m//g" frontend.log 2>/dev/null | grep -o 'http://localhost:[0-9]*' | head -1)
+  [ -n "$APP_URL" ] && break
+  kill -0 $FRONTEND_PID 2>/dev/null || break
+  sleep 0.5
+done
+if [ -z "$APP_URL" ]; then
+  APP_URL="http://localhost:5173"
+  echo "⚠️  Could not detect the frontend address (see frontend.log); assuming $APP_URL"
+fi
 
 echo ""
 echo "=========================================================="
@@ -29,9 +74,29 @@ echo ""
 echo "=========================================================="
 echo ""
 
+# Open TaskTree in the default browser on Windows / WSL / Linux.
+open_other() {
+  local url="$1"
+  echo "Opening $url in your default browser ..."
+  case "$OS" in
+    windows) cmd.exe //c start "" "$url" >/dev/null 2>&1 && return ;;
+    wsl)
+      { command -v wslview >/dev/null 2>&1 && wslview "$url" >/dev/null 2>&1; } && return
+      cmd.exe /c start "" "$url" >/dev/null 2>&1 && return
+      ;;
+    linux) command -v xdg-open >/dev/null 2>&1 && xdg-open "$url" >/dev/null 2>&1 && return ;;
+  esac
+  echo "Could not open a browser automatically. Please open $url manually."
+}
+
 # Open TaskTree in a fresh window of the user's DEFAULT browser.
 open_fresh() {
   local url="$1"
+
+  if [ "$OS" != mac ]; then
+    open_other "$url"
+    return
+  fi
 
   # Detect the default browser's bundle id (handler for https)
   local bid
