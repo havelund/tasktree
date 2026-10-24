@@ -94,7 +94,7 @@ Check with `python3 --version` (Windows: `python --version`) and `node -v`. Olde
 
 1. **Clone the repository:**
 ```bash
-git clone https://github.jpl.nasa.gov/khavelun/tasktree.git
+git clone https://github.com/havelund/tasktree.git
 ```
 
 2. **Navigate to the project directory:**
